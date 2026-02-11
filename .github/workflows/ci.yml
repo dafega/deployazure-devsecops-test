@@ -68,7 +68,7 @@ jobs:
                 docker build -t init-container ./init-container
 
             - name: Scan images for vulnerabilities (bicycles-api)
-              uses: aquasecurity/trivy-action@v0.33.1
+              uses: aquasecurity/trivy-action@0.33.1
               with:
                 scan-type: "image"
                 image-ref: "bicycles-api"
@@ -76,7 +76,7 @@ jobs:
                 exit-code: "1"
                 ignore-unfixed: true
             - name: Scan images for vulnerabilities (maintenance-job)
-              uses: aquasecurity/trivy-action@v0.33.1
+              uses: aquasecurity/trivy-action@0.33.1
               with:
                 scan-type: "image"
                 image-ref: "maintenance-job"
@@ -84,7 +84,7 @@ jobs:
                 exit-code: "1"
                 ignore-unfixed: true
             - name: Scan images for vulnerabilities (init-container)
-              uses: aquasecurity/trivy-action@v0.33.1
+              uses: aquasecurity/trivy-action@0.33.1
               with:
                 scan-type: "image"
                 image-ref: "init-container"
