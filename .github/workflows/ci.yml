@@ -54,6 +54,33 @@ jobs:
               id: unit-tests
               run: |
                 pytest tests/ -v --cov=app --cov-report=term-missing
+            
+            - name: install docker
+              id: install-docker
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build Images
+              id: build-images
+              run: |
+                docker build -f Dockerfile.api -t bicycles-api .
+                docker build -t maintenance-job ./job
+                docker build -t init-container ./init-container
+
+            - name: scan images for vulnerabilities
+              id: scan-images
+              uses: aquasecurity/trivy-action@v3
+              with:
+                scan-type: "image"
+                image-ref:
+                  - bicycles-api
+                  - maintenance-job
+                  - init-container
+                format: "table"
+                exit-code: "1"
+                ignore-unfixed: true
+                ignore-policy: true
+                ignore-unfixed: true
+
 
         outputs:
             clean-code-result: ${{ steps.clean-code.outputs.result }}
