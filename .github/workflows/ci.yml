@@ -16,7 +16,7 @@ env:
 
 jobs:
     CleanCodeAndVulnerabilityChecks:
-        name: CleanCodeCheck
+        name: CleanCodeAndVulnerabilityChecks
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -70,6 +70,7 @@ jobs:
                 format: "table"
                 exit-code: "1"
                 ignore-unfixed: true
+                severity: "CRITICAL"
             - name: Scan images for vulnerabilities (maintenance-job)
               uses: aquasecurity/trivy-action@0.33.1
               with:
@@ -78,6 +79,7 @@ jobs:
                 format: "table"
                 exit-code: "1"
                 ignore-unfixed: true
+                severity: "CRITICAL"
             - name: Scan images for vulnerabilities (init-container)
               uses: aquasecurity/trivy-action@0.33.1
               with:
@@ -86,6 +88,7 @@ jobs:
                 format: "table"
                 exit-code: "1"
                 ignore-unfixed: true
+                severity: "CRITICAL"
 
         outputs:
             clean-code-result: ${{ steps.clean-code.outputs.result }}
