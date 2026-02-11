@@ -46,11 +46,6 @@ jobs:
               run: |
                 pip-audit
                 
-            - name: Run OWASP Dependency-Check
-              id: owasp-dependency-check
-              run: |
-                dependency-check --scan . --format XML --out owasp-dependency-check-report.xml
-            
             - name: Run Unit Tests
               id: unit-tests
               run: |
@@ -95,5 +90,6 @@ jobs:
         outputs:
             clean-code-result: ${{ steps.clean-code.outputs.result }}
             vulnerability-result: ${{ steps.vulnerability-checks.outputs.result }}
-            owasp-dependency-check-result: ${{ steps.owasp-dependency-check.outputs.result }}
             unit-tests-result: ${{ steps.unit-tests.outputs.result }}
+            build-images-result: ${{ steps.build-images.outputs.result }}
+            scan-images-result: ${{ steps.scan-images.outputs.result }}
