@@ -1,0 +1,41 @@
+services:
+  # Init container.
+  init:
+    build:
+      context: ./init-container
+      dockerfile: Dockerfile
+    restart: "no"
+  # API.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "5001:5000"
+    environment:
+      - MY_SECRET=${MY_SECRET:-secret-local}
+      - DATABASE=/app/inventory.db
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Tests.
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - DATABASE=/tmp/test.db
+    command: ["pytest", "tests/", "-v", "--tb=short"]
+    profiles:
+      - tools
+
+  # Job.
+  job:
+    build:
+      context: ./job
+      dockerfile: Dockerfile
+    restart: "no"
+    profiles:
+      - tools  

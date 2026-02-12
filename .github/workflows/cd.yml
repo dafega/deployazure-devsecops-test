@@ -1,0 +1,51 @@
+name: CD Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment: 
+        description: "Environment to deploy"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs: 
+    continuos-deployment:
+        name: Deploy
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.environment }}
+        steps:
+            - name: Checkout code
+              id: checkout
+              uses: actions/checkout@v4
+
+            - name: Set environment variables
+              id: set-env
+              run: | 
+                ENVIRONMENT="${{ github.event.inputs.environment }}"
+
+                echo "================================================"
+                echo " Deployment Environment: $ENVIRONMENT"
+                echo " Trigger: ${{ github.event_name }}"
+                echo " Branch: ${{ github.ref_name }}"
+                echo " Commit: ${{ github.sha }}"
+                echo "================================================"
+
+                if [ "$ENVIRONMENT" = "production" ]; then
+                  echo "ACR_API_REGISTRY=${{ vars.ACR_API_REGISTRY}}"
+                  echo "ACR_INIT_REGISTRY=${{ vars.ACR_INIT_REGISTRY}}"
+                  echo "ACR_JOB_REGISTRY=${{ vars.ACR_JOB_REGISTRY}}"
+                else
+                  echo "ACR_API_REGISTRY=${{ vars.ACR_API_REGISTRY_STAGING}}"
+                  echo "ACR_INIT_REGISTRY=${{ vars.ACR_INIT_REGISTRY_STAGING}}"
+                  echo "ACR_JOB_REGISTRY=${{ vars.ACR_JOB_REGISTRY_STAGING}}"
+                fi
+
+            - name: Login to Azure Container Registry
+              id: login-acr
+              uses: azure/login@v1

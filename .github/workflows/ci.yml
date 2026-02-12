@@ -1,0 +1,91 @@
+name: CI Pipeline
+
+on:
+    push:
+        branches:
+            - main
+            - Feature/*
+    pull_request:
+        branches:
+            - main
+            - dev
+
+
+env:
+    PYTHON_VERSION: 3.11            
+
+jobs:
+    CleanCodeAndVulnerabilityChecks:
+        name: CleanCodeAndVulnerabilityChecks
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              id: checkout
+              uses: actions/checkout@v4
+
+            - name: SetUp Python
+              id: setup-python
+              uses: actions/setup-python@v4
+              with:
+                python-version: ${{ env.PYTHON_VERSION}}
+            
+            - name: Install python dependencies
+              id: dependencies
+              run: |
+                python -m pip install --upgrade pip
+                pip install -r 'requirements.txt'
+                pip install flake8 pip-audit
+
+            - name: Run CleanCode checks
+              id: clean-code
+              run: |
+                flake8 app tests --max-line-length=120 --count --statistics --exclude=tests/* --ignore=E302,W293,W292
+
+            - name: Run Vulnerability checks
+              id: vulnerability-checks
+              run: |
+                pip-audit
+                
+            - name: Run Unit Tests
+              id: unit-tests
+              run: |
+                pytest tests/ -v --cov=app --cov-report=term-missing
+            
+            - name: install docker
+              id: install-docker
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build Images
+              id: build-images
+              run: |
+                docker build -f Dockerfile.api -t bicycles-api .
+                docker build -t maintenance-job ./job
+                docker build -t init-container ./init-container
+
+            - name: Scan images for vulnerabilities (bicycles-api)
+              uses: aquasecurity/trivy-action@0.33.1
+              with:
+                scan-type: "image"
+                image-ref: "bicycles-api"
+                format: "table"
+                exit-code: "1"
+                ignore-unfixed: true
+                severity: "CRITICAL"
+            - name: Scan images for vulnerabilities (maintenance-job)
+              uses: aquasecurity/trivy-action@0.33.1
+              with:
+                scan-type: "image"
+                image-ref: "maintenance-job"
+                format: "table"
+                exit-code: "1"
+                ignore-unfixed: true
+                severity: "CRITICAL"
+            - name: Scan images for vulnerabilities (init-container)
+              uses: aquasecurity/trivy-action@0.33.1
+              with:
+                scan-type: "image"
+                image-ref: "init-container"
+                format: "table"
+                exit-code: "1"
+                ignore-unfixed: true
+                severity: "CRITICAL"

@@ -1,0 +1,21 @@
+# App 1: API CRUD inventario de bicicletas
+# Python 3.10+ según reglas del proyecto. Para Azure Container Apps.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Dependencias
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Código de la aplicación
+COPY app/ ./app/
+COPY app.py .
+
+# La base de datos SQLite se persiste en /app (volumen en Azure si se necesita)
+ENV DATABASE=/app/inventory.db
+
+EXPOSE 5000
+
+# Gunicorn para producción
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app", "--timeout", "120"]

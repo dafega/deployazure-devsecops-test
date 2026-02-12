@@ -1,0 +1,17 @@
+# Usado por docker build -f Dockerfile.api
+.git
+.cursor
+__pycache__
+*.pyc
+.pytest_cache
+htmlcov
+.coverage
+*.db
+env
+.venv
+venv
+job
+init-container
+Dockerfile.job
+README.md
+.gitignore
