@@ -8,9 +8,12 @@ terraform {
     }
   }
 
-  # Backend remoto comentado: usa state local para poder destruir la infra actual.
-  # Cuando vuelvas a usar backend remoto, descomenta y haz terraform init.
-  # backend "azurerm" {}
+  backend "azurerm" {
+    resource_group_name  = "rg-devsecops-test"
+    storage_account_name = "sttfstatedevsecops"
+    container_name       = "tfstate"
+    key                  = "devsecops.terraform.tfstate"
+  }
 }
 
 provider "azurerm" {
