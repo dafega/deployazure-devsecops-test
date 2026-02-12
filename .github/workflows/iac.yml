@@ -53,7 +53,7 @@ jobs:
 
       - name: Apply Terraform
         id: apply-terraform
-        run: terraform apply
+        run: terraform apply -auto-approve
         working-directory: terraform
 
   iac-destroy-pipeline-staging:
