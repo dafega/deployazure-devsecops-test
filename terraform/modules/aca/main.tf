@@ -1,7 +1,7 @@
 locals {
   # Imagen placeholder para que terraform apply funcione antes del primer push
   api_image  = var.api_image != "" ? var.api_image : "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
-  init_image = var.init_image != "" ? var.init_image : "mcr.microsoft.com/oss/busybox/busybox:latest"
+  init_image = var.init_image != "" ? var.init_image : "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
 }
 
 resource "azurerm_container_app" "api" {

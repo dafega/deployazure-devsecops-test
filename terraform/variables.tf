@@ -29,13 +29,13 @@ variable "acr_sku" {
 }
 
 variable "container_app_api_image" {
-  description = "Imagen de la API (ej. acr.azurecr.io/api:latest). Se puede dejar placeholder para aplicar después del primer push."
+  description = "Imagen de la API (ej. acr.azurecr.io/api:latest). Se puede dejar vacío para usar imagen placeholder."
   type        = string
   default     = ""
 }
 
 variable "container_app_init_image" {
-  description = "Imagen del init container (ej. acr.azurecr.io/init:latest)"
+  description = "Imagen del init container (ej. acr.azurecr.io/init:latest). Se puede dejar vacío para usar imagen placeholder."
   type        = string
   default     = ""
 }

@@ -8,7 +8,53 @@ Módulos para aprovisionar:
 - **Container App** – API Python + init container
 - **Container App Job** – job de mantenimiento (cron cada 2 min)
 
-Se usa un **resource group existente** (`rg-devsecops-test` por defecto).
+Se usa un **resource group existente** (`rg-devsecops-test` por defecto).  
+El **estado de Terraform** se guarda en **Azure Storage** (backend remoto).
+
+## Backend remoto (Azure Storage)
+
+El state se guarda en un blob dentro de una cuenta de almacenamiento en Azure. **Una sola vez** hay que crear esa cuenta y el contenedor (si no existen).
+
+### 1. Crear Storage Account y contenedor (una vez)
+
+Nombre de la cuenta en `providers.tf`: **`sttfstatedevsecops`**. Debe ser **único a nivel global**; si ya existe en Azure, elige otro (3–24 caracteres alfanuméricos) y actualiza `storage_account_name` en `providers.tf`.
+
+```bash
+# Variables (ajusta RESOURCE_GROUP y LOCATION si usas otros)
+RESOURCE_GROUP="rg-devsecops-test"
+LOCATION="East US"
+STORAGE_ACCOUNT="sttfstatedevsecops"
+CONTAINER="tfstate"
+
+# Crear cuenta de almacenamiento
+az storage account create \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$STORAGE_ACCOUNT" \
+  --location "$LOCATION" \
+  --sku Standard_LRS \
+  --allow-blob-public-access false
+
+# Crear contenedor para el state
+az storage container create \
+  --name "$CONTAINER" \
+  --account-name "$STORAGE_ACCOUNT" \
+  --auth-mode login
+```
+
+### 2. Permisos para el state
+
+El usuario o Service Principal que ejecute Terraform debe poder leer/escribir blobs en esa cuenta (por ejemplo **Contributor** en el resource group o **Storage Blob Data Contributor** en la cuenta de almacenamiento). Si ya tienes Contributor en `rg-devsecops-test`, suele ser suficiente.
+
+### 3. Inicializar Terraform con el backend
+
+```bash
+cd terraform
+terraform init
+```
+
+Si antes tenías state local, Terraform preguntará si quieres **migrar** el state al backend remoto; contesta **yes** para no perder el estado.
+
+---
 
 ## Requisitos
 
@@ -117,7 +163,7 @@ terraform/
 ├── main.tf              # Data sources + llamadas a módulos
 ├── variables.tf          # Variables globales
 ├── outputs.tf            # Outputs globales
-├── providers.tf          # Azure, AzureAD, Random
+├── providers.tf          # Azure, backend azurerm (state en Azure Storage)
 ├── modules/
 │   ├── keyvault/         # Key Vault + secreto de prueba
 │   ├── acr/              # Azure Container Registry

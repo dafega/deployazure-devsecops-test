@@ -8,7 +8,8 @@ terraform {
     }
   }
 
-  # Para pruebas locales puedes comentar el backend y usar estado local
+  # Backend remoto comentado: usa state local para poder destruir la infra actual.
+  # Cuando vuelvas a usar backend remoto, descomenta y haz terraform init.
   # backend "azurerm" {}
 }
 

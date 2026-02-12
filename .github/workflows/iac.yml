@@ -1,0 +1,87 @@
+name: IaC Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment: 
+        description: "Environment to deploy to AWS ECR"
+        required: false
+        default: "staging"
+        type: choice
+        options:
+          - stag
+          - prod
+      destroy:
+        description: "Destroy the environment"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  iac-pipeline-staging:
+    name: IaC Pipeline
+    if: github.event.inputs.environment == 'stag'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@v4
+    
+      - name: Install Terraform
+        id: install-terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Initialize Terraform
+        id: initialize-terraform
+        run: terraform init
+        working-directory: terraform
+
+      - name: Plan Terraform
+        id: plan-terraform
+        run: terraform plan
+        working-directory: terraform
+
+      - name: Apply Terraform
+        id: apply-terraform
+        run: terraform apply
+        working-directory: terraform
+
+  iac-destroy-pipeline-staging:
+    name: IaC Destroy Pipeline
+    if: github.event.inputs.environment == 'stag' && github.event.inputs.destroy == true
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    env:
+        ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
+        ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
+        ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        id: install-terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Initialize Terraform
+        id: initialize-terraform
+        run: terraform init
+        working-directory: terraform
+
+      - name: Destroy Terraform
+        id: destroy-terraform
+        run: terraform destroy
+        working-directory: terraform
