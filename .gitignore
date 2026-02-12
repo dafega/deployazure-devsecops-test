@@ -212,3 +212,8 @@ __marimo__/
 # Terraform
 .terraform/
 .terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+env.sh

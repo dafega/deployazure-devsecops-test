@@ -89,10 +89,3 @@ jobs:
                 exit-code: "1"
                 ignore-unfixed: true
                 severity: "CRITICAL"
-
-        outputs:
-            clean-code-result: ${{ steps.clean-code.outputs.result }}
-            vulnerability-result: ${{ steps.vulnerability-checks.outputs.result }}
-            unit-tests-result: ${{ steps.unit-tests.outputs.result }}
-            build-images-result: ${{ steps.build-images.outputs.result }}
-            scan-images-result: ${{ steps.scan-images.outputs.result }}
