@@ -40,7 +40,7 @@ resource "azurerm_container_app" "api" {
 
       liveness_probe {
         transport        = "HTTP"
-        path             = "/"
+        path             = "/api/bicycles/health"
         port             = var.api_target_port
         initial_delay    = 10
         interval_seconds = 10
@@ -48,7 +48,7 @@ resource "azurerm_container_app" "api" {
 
       readiness_probe {
         transport               = "HTTP"
-        path                    = "/"
+        path                    = "/api/bicycles/health"
         port                    = var.api_target_port
         interval_seconds        = 5
         success_count_threshold = 1
