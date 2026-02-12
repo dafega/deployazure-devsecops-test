@@ -82,3 +82,10 @@ variable "memory" {
   type        = string
   default     = "0.5Gi"
 }
+
+variable "app_my_secret_value" {
+  description = "Valor para la variable de entorno MY_SECRET (p. ej. desde Key Vault). Si está vacío, MY_SECRET no se inyecta."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

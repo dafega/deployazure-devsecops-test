@@ -3,49 +3,147 @@ name: CD Pipeline
 on:
   workflow_dispatch:
     inputs:
-      environment: 
+      environment:
         description: "Environment to deploy"
         required: true
-        default: "staging"
+        default: "stag"
         type: choice
         options:
-          - staging
-          - production
+          - stag
+          - prod
+
 env:
   IMAGE_TAG: ${{ github.sha }}
 
-jobs: 
-    continuos-deployment:
-        name: Deploy
-        runs-on: ubuntu-latest
-        environment: ${{ inputs.environment }}
-        steps:
-            - name: Checkout code
-              id: checkout
-              uses: actions/checkout@v4
+jobs:
+  deploy:
+    name: Build, Push & Deploy
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    env:
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID_STAG }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET_STAG }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID_STAG }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID_STAG }}
 
-            - name: Set environment variables
-              id: set-env
-              run: | 
-                ENVIRONMENT="${{ github.event.inputs.environment }}"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-                echo "================================================"
-                echo " Deployment Environment: $ENVIRONMENT"
-                echo " Trigger: ${{ github.event_name }}"
-                echo " Branch: ${{ github.ref_name }}"
-                echo " Commit: ${{ github.sha }}"
-                echo "================================================"
+      - name: Set ACR variables
+        id: acr
+        run: |
+          ACR_NAME="${{ vars.ACR_NAME_STAG }}"
+          if [ -z "$ACR_NAME" ]; then
+            echo "::error::GitHub Variable ACR_NAME is required (e.g. acrdevsecopsstag)"
+            exit 1
+          fi
+          echo "ACR_LOGIN_SERVER=${ACR_NAME}.azurecr.io" >> $GITHUB_ENV
+          echo "ACR_NAME=$ACR_NAME" >> $GITHUB_ENV
+          echo "================================================"
+          echo " Environment: ${{ github.event.inputs.environment }}"
+          echo " ACR: ${ACR_NAME}.azurecr.io"
+          echo " Image tag: ${{ env.IMAGE_TAG }}"
+          echo "================================================"
 
-                if [ "$ENVIRONMENT" = "production" ]; then
-                  echo "ACR_API_REGISTRY=${{ vars.ACR_API_REGISTRY}}"
-                  echo "ACR_INIT_REGISTRY=${{ vars.ACR_INIT_REGISTRY}}"
-                  echo "ACR_JOB_REGISTRY=${{ vars.ACR_JOB_REGISTRY}}"
-                else
-                  echo "ACR_API_REGISTRY=${{ vars.ACR_API_REGISTRY_STAGING}}"
-                  echo "ACR_INIT_REGISTRY=${{ vars.ACR_INIT_REGISTRY_STAGING}}"
-                  echo "ACR_JOB_REGISTRY=${{ vars.ACR_JOB_REGISTRY_STAGING}}"
-                fi
+      - name: Login to Azure (Service Principal)
+        run: |
+          az login --service-principal \
+            -u "$ARM_CLIENT_ID" \
+            -p "$ARM_CLIENT_SECRET" \
+            --tenant "$ARM_TENANT_ID"
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
 
-            - name: Login to Azure Container Registry
-              id: login-acr
-              uses: azure/login@v1
+      - name: Get ACR credentials
+        id: acr-creds
+        run: |
+          ACR_USERNAME=$(az acr credential show --name ${{ env.ACR_NAME }} --query username -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR_NAME }} --query "passwords[0].value" -o tsv)
+          echo "username=$ACR_USERNAME" >> $GITHUB_OUTPUT
+          echo "::add-mask::$ACR_PASSWORD"
+          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
+
+      - name: Login to Azure Container Registry (Docker)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.api
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/api:${{ env.IMAGE_TAG }}
+            ${{ env.ACR_LOGIN_SERVER }}/api:latest
+
+      - name: Build and push init container image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./init-container
+          file: ./init-container/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/init:${{ env.IMAGE_TAG }}
+            ${{ env.ACR_LOGIN_SERVER }}/init:latest
+
+      - name: Build and push job image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./job
+          file: ./job/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ACR_LOGIN_SERVER }}/job:${{ env.IMAGE_TAG }}
+            ${{ env.ACR_LOGIN_SERVER }}/job:latest
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Apply (update images)
+        run: |
+          terraform apply -auto-approve \
+            -var="container_app_api_image=${{ env.ACR_LOGIN_SERVER }}/api:${{ env.IMAGE_TAG }}" \
+            -var="container_app_init_image=${{ env.ACR_LOGIN_SERVER }}/init:${{ env.IMAGE_TAG }}" \
+            -var="container_app_job_image=${{ env.ACR_LOGIN_SERVER }}/job:${{ env.IMAGE_TAG }}"
+        working-directory: terraform
+
+      - name: Get API name and URL (Azure CLI)
+        id: api-info
+        run: |
+          RESOURCE_GROUP="rg-devsecops-test"
+          CONTAINER_APP_NAME="ca-devsecops-api-${{ github.event.inputs.environment }}"
+          FQDN=$(az containerapp show \
+            --name "$CONTAINER_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || echo "")
+          if [ -n "$FQDN" ]; then
+            echo "api_name=$CONTAINER_APP_NAME" >> $GITHUB_OUTPUT
+            echo "api_url=https://$FQDN" >> $GITHUB_OUTPUT
+            echo "API name: $CONTAINER_APP_NAME"
+            echo "API URL:  https://$FQDN"
+          else
+            echo "::warning::Container App not found or FQDN not available"
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "================================================"
+          echo " Deployment completed"
+          echo " API name:  ${{ steps.api-info.outputs.api_name }}"
+          echo " API URL:   ${{ steps.api-info.outputs.api_url }}"
+          echo " API image: ${{ env.ACR_LOGIN_SERVER }}/api:${{ env.IMAGE_TAG }}"
+          echo " Init image: ${{ env.ACR_LOGIN_SERVER }}/init:${{ env.IMAGE_TAG }}"
+          echo " Job image:  ${{ env.ACR_LOGIN_SERVER }}/job:${{ env.IMAGE_TAG }}"
+          echo "================================================"

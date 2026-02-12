@@ -27,10 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     env:
-      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
-      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID_STAG }}
+      ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET_STAG }}
+      ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID_STAG }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID_STAG }}
 
     steps:
       - name: Checkout code
@@ -53,35 +53,6 @@ jobs:
 
       - name: Apply Terraform
         id: apply-terraform
-        run: terraform apply
+        run: terraform apply -auto-approve
         working-directory: terraform
 
-  iac-destroy-pipeline-staging:
-    name: IaC Destroy Pipeline
-    if: github.event.inputs.environment == 'stag' && github.event.inputs.destroy == true
-    runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
-    env:
-        ARM_CLIENT_ID:       ${{ secrets.ARM_CLIENT_ID }}
-        ARM_CLIENT_SECRET:   ${{ secrets.ARM_CLIENT_SECRET }}
-        ARM_TENANT_ID:       ${{ secrets.ARM_TENANT_ID }}
-        ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-
-    steps:
-      - name: Checkout code
-        id: checkout
-        uses: actions/checkout@v4
-
-      - name: Install Terraform
-        id: install-terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Initialize Terraform
-        id: initialize-terraform
-        run: terraform init
-        working-directory: terraform
-
-      - name: Destroy Terraform
-        id: destroy-terraform
-        run: terraform destroy
-        working-directory: terraform

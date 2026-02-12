@@ -66,8 +66,9 @@ module "aca_api" {
   api_image                    = var.container_app_api_image
   init_image                   = var.container_app_init_image
   api_target_port              = 5000
-  min_replicas                 = 0
-  max_replicas                 = 3
+  min_replicas                 = 1
+  max_replicas                 = 1
+  app_my_secret_value          = var.key_vault_test_secret_value
 }
 
 # -----------------------------------------------------------------------------

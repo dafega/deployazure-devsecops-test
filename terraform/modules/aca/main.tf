@@ -15,6 +15,14 @@ resource "azurerm_container_app" "api" {
     value = var.acr_admin_password
   }
 
+  dynamic "secret" {
+    for_each = var.app_my_secret_value != "" ? [1] : []
+    content {
+      name  = "app-my-secret"
+      value = var.app_my_secret_value
+    }
+  }
+
   registry {
     server               = var.acr_login_server
     username             = var.acr_admin_username
@@ -38,9 +46,17 @@ resource "azurerm_container_app" "api" {
       cpu    = var.cpu
       memory = var.memory
 
+      dynamic "env" {
+        for_each = var.app_my_secret_value != "" ? [1] : []
+        content {
+          name        = "MY_SECRET"
+          secret_name = "app-my-secret"
+        }
+      }
+
       liveness_probe {
         transport        = "HTTP"
-        path             = "/"
+        path             = "/api/bicycles/health"
         port             = var.api_target_port
         initial_delay    = 10
         interval_seconds = 10
@@ -48,7 +64,7 @@ resource "azurerm_container_app" "api" {
 
       readiness_probe {
         transport               = "HTTP"
-        path                    = "/"
+        path                    = "/api/bicycles/health"
         port                    = var.api_target_port
         interval_seconds        = 5
         success_count_threshold = 1
