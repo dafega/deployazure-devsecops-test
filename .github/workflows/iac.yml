@@ -23,7 +23,7 @@ env:
 jobs:
   iac-pipeline-staging:
     name: IaC Pipeline
-    if: github.event.inputs.environment == 'stag'
+    if: github.event.inputs.environment == 'stag' && github.event.inputs.destroy == false
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     env:
