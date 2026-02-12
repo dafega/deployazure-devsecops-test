@@ -68,6 +68,7 @@ module "aca_api" {
   api_target_port              = 5000
   min_replicas                 = 1
   max_replicas                 = 3
+  app_my_secret_value          = var.key_vault_test_secret_value
 }
 
 # -----------------------------------------------------------------------------

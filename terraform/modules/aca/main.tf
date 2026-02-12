@@ -15,6 +15,14 @@ resource "azurerm_container_app" "api" {
     value = var.acr_admin_password
   }
 
+  dynamic "secret" {
+    for_each = var.app_my_secret_value != "" ? [1] : []
+    content {
+      name  = "app-my-secret"
+      value = var.app_my_secret_value
+    }
+  }
+
   registry {
     server               = var.acr_login_server
     username             = var.acr_admin_username
@@ -37,6 +45,14 @@ resource "azurerm_container_app" "api" {
       image  = local.api_image
       cpu    = var.cpu
       memory = var.memory
+
+      dynamic "env" {
+        for_each = var.app_my_secret_value != "" ? [1] : []
+        content {
+          name        = "MY_SECRET"
+          secret_name = "app-my-secret"
+        }
+      }
 
       liveness_probe {
         transport        = "HTTP"
